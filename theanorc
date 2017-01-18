@@ -1,0 +1,13 @@
+[global]
+device=gpu0
+floatX=float32
+optimizer=fast_run
+allow_gc=False
+base_compiledir=/training_data/.theano_compiled/
+
+[lib]
+cnmem=10000
+
+[nvcc]
+# Work around a fun glibc bug.
+flags=-D_FORCE_INLINES

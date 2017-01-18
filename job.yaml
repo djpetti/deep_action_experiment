@@ -1,0 +1,24 @@
+# Name of the job.
+Name: Train Action Split 2 3L (Eval)
+# Description.
+Description: Deep action training job, split 2, three layers, eval.
+
+# The base docker container to use.
+Container: djpetti/rpinets-theano
+
+# Additional volumes to mount. Each entry is the directory on the host system
+# mapped to the mount point in the container.
+Volumes:
+  - /training_data: /training_data
+  - /home/daniel/git/rpinets: /job_files/rpinets
+
+# Section for specifying expected resource usage.
+ResourceUsage:
+  # Expected CPU usage requirements. Here, 100 means 100% of one core.
+  - CpuUsage: 150
+  # Expected RAM usage requirements, in bytes.
+  - RamUsage: 15300000000
+  # Expected GPU usage, in percent.
+  - GpuUsage: 50
+  # Expected VRAM usage, in bytes.
+  - VramUsage: 10000000000
