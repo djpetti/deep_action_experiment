@@ -39,18 +39,18 @@ from rpinets.theano.alexnet import AlexNet
 from rpinets.theano import learning_rates
 
 from action_data_loader import ActionTestingLoader
-import action_alexnet
+import action_predict
 
 
 logger = logging.getLogger(__name__)
 
 
 batch_size = 128
-evaluation_batch_size = 150
+eval_batch_size = 150
 # How many batches to have loaded into VRAM at once.
 load_batches = 5
 # How many batches to have loaded into VRAM at once when evaluating.
-evaluation_load_batches = 4
+eval_load_batches = 4
 # Shape of the input images.
 image_shape = (240, 320, 3)
 # Shape of the input patches.
@@ -66,14 +66,14 @@ decay_rate = 0.85
 decay_steps = 10000
 
 # Where to save the network.
-save_file = "/job_files/action_frame_alexnet_split_2.pkl"
+save_file = "/job_files/action_frame_alexnet_split_1.pkl"
 # Location of the original file that we should start training from.
 alexnet_file = "/training_data/rpinets/alexnet.pkl"
 synsets_save_file = "/job_files/synsets.pkl"
 # Location of the dataset files.
-dataset_files = "/training_data/action/split2_data/dataset"
+dataset_files = "/training_data/action/split1_data/dataset"
 # Location of the cache files.
-cache_dir = "/training_data/action/split2_data/cache"
+cache_dir = "/training_data/action/split1_data/cache"
 
 
 def train():
@@ -174,8 +174,8 @@ def evaluate_final(save_to):
   """ Evaluates the trained network.
   Args:
     save_to: Where to save the evaluation results. """
-  data = ActionTestingLoader(evaluation_load_batches, image_shape, cache_dir,
-                             dataset_files, patch_shape=patch_shape)
+  data = ActionTestingLoader(eval_batch_siz, eval_load_batches, image_shape,
+                             cache_dir, dataset_files, patch_shape=patch_shape)
   if not os.path.exists(synsets_save_file):
     logger.critical("Synset file '%s' not found!" % (synsets_save_file))
     sys.exit(1)
@@ -192,7 +192,7 @@ def evaluate_final(save_to):
 
   # Load the existing network and run evaluation.
   logger.info("Loading partially trained network '%s'..." % (save_file))
-  network = AlexNet.load(save_file, None, test, evaluation_batch_size,
+  network = AlexNet.load(save_file, None, test, eval_batch_size,
                          learning_rate=learning_rate)
 
   logger.info("Starting evaluation...")
@@ -201,7 +201,7 @@ def evaluate_final(save_to):
   total_videos = data.get_num_videos()
   logger.debug("Have %d total videos in test set." % (total_videos))
   # Each video is represented by 25 frames in the batch.
-  run_batches = float(total_videos) / (150 / 25) / evaluation_load_batches
+  run_batches = float(total_videos) / (eval_batch_size / 25) / eval_load_batches
   # We want to make sure every image is covered, which could result in partial
   # batches.
   run_batches = int(math.ceil(run_batches))
@@ -210,14 +210,14 @@ def evaluate_final(save_to):
   evaluation_data = []
   for i in range(0, run_batches):
     # Run on all the included batches.
-    for batch_index in range(0, evaluation_load_batches):
+    for batch_index in range(0, eval_load_batches):
       # Get the image names.
       truth_index = batch_index * batch_size
       names = test_names[truth_index:truth_index + batch_size]
 
       # We're going to use the prediction functionality to get the
       # raw prediction for this video.
-      outputs = action_alexnet.predict_patched(network, batch_index, names)
+      outputs = action_predict.predict_patched(network, batch_index, names)
 
       # Convert from neuron indices to actual labels.
       for video_name, output in outputs.iteritems():

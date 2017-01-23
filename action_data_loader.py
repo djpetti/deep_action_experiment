@@ -24,12 +24,16 @@ class ActionTestingLoader(data_loader.DataManagerLoader):
   The main additional functionality is there to enable the special testing
   procedure that we have for this dataset. """
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, batch_size, *args, **kwargs):
     """
     Args:
-      Same as superclass, except the batch_size argument should not be
-      specified. It will always be 25. """
-    super(ActionTestingLoader, self).__init__(150, *args, **kwargs)
+      Same as superclass, except that batch_size has to be a multiple of 25.
+      This is so that each batch contains the frames from a whole number of
+      videos. """
+    if batch_size % 25:
+      raise ValueError("batch_size must be a multiple of 25.")
+
+    super(ActionTestingLoader, self).__init__(batch_size, *args, **kwargs)
 
   def _init_image_getter(self):
     """ See superclass documentation. This version is also special in that it
