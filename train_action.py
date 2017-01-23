@@ -38,13 +38,19 @@ from rpinets.common.data_manager import utils
 from rpinets.theano.alexnet import AlexNet
 from rpinets.theano import learning_rates
 
+from action_data_loader import ActionTestingLoader
+import action_alexnet
+
 
 logger = logging.getLogger(__name__)
 
 
 batch_size = 128
+evaluation_batch_size = 150
 # How many batches to have loaded into VRAM at once.
 load_batches = 5
+# How many batches to have loaded into VRAM at once when evaluating.
+evaluation_load_batches = 4
 # Shape of the input images.
 image_shape = (240, 320, 3)
 # Shape of the input patches.
@@ -168,10 +174,8 @@ def evaluate_final(save_to):
   """ Evaluates the trained network.
   Args:
     save_to: Where to save the evaluation results. """
-  data = data_loader.SequentialDataManagerLoader(batch_size, load_batches,
-                                                 image_shape, cache_dir,
-                                                 dataset_files,
-                                                 patch_shape=patch_shape)
+  data = ActionTestingLoader(evaluation_load_batches, image_shape, cache_dir,
+                             dataset_files, patch_shape=patch_shape)
   if not os.path.exists(synsets_save_file):
     logger.critical("Synset file '%s' not found!" % (synsets_save_file))
     sys.exit(1)
@@ -186,17 +190,18 @@ def evaluate_final(save_to):
     logger.critical("Could not find saved network '%s'!" % (save_file))
     sys.exit(1)
 
-  # Load the existing network and continue training.
+  # Load the existing network and run evaluation.
   logger.info("Loading partially trained network '%s'..." % (save_file))
-  network = AlexNet.load(save_file, None, test, batch_size,
+  network = AlexNet.load(save_file, None, test, evaluation_batch_size,
                          learning_rate=learning_rate)
 
   logger.info("Starting evaluation...")
 
   # Find out how many iterations we have to run.
-  total_images = data.get_test_set_size()
-  logger.debug("Have %d total images in test set." % (total_images))
-  run_batches = float(total_images) / (batch_size * load_batches)
+  total_videos = data.get_num_videos()
+  logger.debug("Have %d total videos in test set." % (total_videos))
+  # Each video is represented by 25 frames in the batch.
+  run_batches = float(total_videos) / (150 / 25) / evaluation_load_batches
   # We want to make sure every image is covered, which could result in partial
   # batches.
   run_batches = int(math.ceil(run_batches))
@@ -205,27 +210,23 @@ def evaluate_final(save_to):
   evaluation_data = []
   for i in range(0, run_batches):
     # Run on all the included batches.
-    for batch_index in range(0, load_batches):
-      # We're going to use the prediction functionality to collect the raw
-      # outputs.
-      outputs = network.predict_patched(batch_index)
-
-      # Save the output data and the "ground truth".
+    for batch_index in range(0, evaluation_load_batches):
+      # Get the image names.
       truth_index = batch_index * batch_size
-      ground_truth = cpu_labels[truth_index:truth_index + batch_size]
-
-      # Convert from neuron indices to actual labels.
-      outputs = data.convert_ints_to_labels(outputs)
-      ground_truth = data.convert_ints_to_labels(ground_truth)
-
-      # Additionally, save the image names.
       names = test_names[truth_index:truth_index + batch_size]
 
-      # Save the data.
-      evaluation_data.append([ground_truth, outputs, names])
+      # We're going to use the prediction functionality to get the
+      # raw prediction for this video.
+      outputs = action_alexnet.predict_patched(network, batch_index, names)
 
-      logger.debug("Outputs: %s" % (outputs))
-      logger.debug("Ground truth: %s" % (ground_truth))
+      # Convert from neuron indices to actual labels.
+      for video_name, output in outputs.iteritems():
+        output = data.convert_ints_to_labels([output])[0]
+        outputs[video_name] = output
+
+      # Save the data.
+      evaluation_data.append([outputs, names])
+      logger.debug("Output: %s" % (outputs))
 
     # Swap in new data.
     logger.info("Getting test set.")
