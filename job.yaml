@@ -1,7 +1,7 @@
 # Name of the job.
-Name: Train Action Split 2 3L (Eval)
+Name: Train Action Split 1 3L (Eval)
 # Description.
-Description: Deep action training job, split 2, three layers, eval.
+Description: Deep action training job, split 1, three layers, eval.
 
 # The base docker container to use.
 Container: djpetti/rpinets-theano

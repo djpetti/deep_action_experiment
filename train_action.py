@@ -174,7 +174,7 @@ def evaluate_final(save_to):
   """ Evaluates the trained network.
   Args:
     save_to: Where to save the evaluation results. """
-  data = ActionTestingLoader(eval_batch_siz, eval_load_batches, image_shape,
+  data = ActionTestingLoader(eval_batch_size, eval_load_batches, image_shape,
                              cache_dir, dataset_files, patch_shape=patch_shape)
   if not os.path.exists(synsets_save_file):
     logger.critical("Synset file '%s' not found!" % (synsets_save_file))

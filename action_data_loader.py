@@ -86,6 +86,11 @@ class ActionTestingLoader(data_loader.DataManagerLoader):
     self._test_thread = threading.Thread(target=self._run_test_loader_thread)
     self._test_thread.start()
 
+  def _join_loader_threads(self):
+    """ See superclass documentation. """
+    logger.info("Joining test thread...")
+    self._test_thread.join()
+
   def _load_raw_testing_batch(self):
     """ See superclass documentation. """
     # We want to fill the buffer up with only images that we're going to use.
