@@ -90,6 +90,7 @@ def train():
   train = data.get_train_set()
   test = data.get_test_set()
   cpu_labels = data.get_non_shared_test_set()[:]
+  train_cpu_labels = data.get_non_shared_train_set()[:]
 
   if os.path.exists(save_file):
     # Load the existing network and continue training.
@@ -134,6 +135,7 @@ def train():
       train_batch_index = 0
       logger.info("Getting train set.")
       train = data.get_train_set()
+      train_cpu_labels = data.get_non_shared_train_set()[:]
       logger.info("Got train set.")
     # Swap in new data if we need to.
     test_set_one_patch = data.get_test_batch_size() / 10
@@ -152,6 +154,15 @@ def train():
           cpu_labels[label_index:label_index + batch_size])
       logger.info("Step %d, testing top 1: %f, testing top 5: %f" % \
                   (iterations, top_one, top_five))
+
+      # Test it using the training data as well, which we will use to quantify
+      # overfitting.
+      label_index = train_batch_index * batch_size
+      top_one, top_five = \
+          network.test_with_training_data(train_batch_index,
+              train_cpu_labels[label_index:label_index + batch_size])
+      logger.info("(Accuracy on training data: top 1: %f, top 5: %f)" % \
+                  (top_one, top_five))
 
       test_batch_index += 1
 
