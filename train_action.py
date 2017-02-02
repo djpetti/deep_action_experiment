@@ -36,6 +36,7 @@ import sys
 
 from rpinets.common.data_manager import utils
 from rpinets.theano.alexnet import AlexNet
+from rpinets.theano import layers
 from rpinets.theano import learning_rates
 
 from action_data_loader import ActionTestingLoader
@@ -114,9 +115,12 @@ def train():
     # For exponential decay to work right, we're going to have to reset the
     # global step to zero.
     network.reset_global_step()
-    # We're going to have to change the number of outputs.
-    logger.info("Changing outputs from 1000 to 101...")
-    network.replace_bottom_layers([], 101)
+    logger.info("Changing network structure...")
+    # We need 101 outputs and only 2048 neurons in the previous layer.
+    replacement_layer = layers.InnerProductLayer(size=2048, dropout=True,
+                                                 weight_init="gaussian",
+                                                 weight_stddev=0.005)
+    network.replace_bottom_layers([replacement_layer], 101)
 
   logger.info("Starting training...")
 
