@@ -128,7 +128,7 @@ def train():
   train_batch_index = 0
   test_batch_index = 0
 
-  while iterations < 10000:
+  while iterations < 7000:
     logger.debug("Train index, size: %d, %d" % (train_batch_index,
                                                 data.get_train_batch_size()))
     logger.debug("Test index, size: %d, %d" % (test_batch_index,
