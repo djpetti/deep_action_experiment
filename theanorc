@@ -6,7 +6,7 @@ allow_gc=False
 base_compiledir=/training_data/.theano_compiled/
 
 [lib]
-cnmem=10000
+cnmem=11000
 
 [nvcc]
 # Work around a fun glibc bug.

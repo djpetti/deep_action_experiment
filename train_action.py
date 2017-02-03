@@ -46,10 +46,10 @@ import action_predict
 logger = logging.getLogger(__name__)
 
 
-batch_size = 256
+batch_size = 128
 eval_batch_size = 150
 # How many batches to have loaded into VRAM at once.
-load_batches = 4
+load_batches = 2
 # How many batches to have loaded into VRAM at once when evaluating.
 eval_load_batches = 4
 # Shape of the input images.
@@ -71,16 +71,16 @@ pretrain_decay_rate = 0.1
 pretrain_decay_steps = 80000
 
 # Where to save the network.
-save_file = "/job_files/action_frame_alexnet_split_1.pkl"
+save_file = "/job_files/action_frame_alexnet_split_3_new_arch.pkl"
 synsets_save_file = "/job_files/synsets.pkl"
 # Location of the original file that we should start training from.
 alexnet_file = "/training_data/action/alexnet_m_2048.pkl"
 alexnet_synsets_file = "/training_data/rpinets/synsets.pkl"
 # Location of the dataset files.
-dataset_files = "/training_data/action/split1_data/dataset"
+dataset_files = "/training_data/action/split3_data/dataset"
 alexnet_dataset_files = "/training_data/rpinets/ilsvrc16_dataset"
 # Location of the cache files.
-cache_dir = "/training_data/action/split1_data/cache"
+cache_dir = "/training_data/action/split3_data/cache"
 alexnet_cache_dir = "/training_data/rpinets/cache"
 # Location of synset data.
 synset_location = "/training_data/rpinets/synsets"
@@ -194,14 +194,12 @@ def train():
 
 def pretrain():
   """ Pretrains the network on the ILSVRC dataset. """
-  data = data_loader.ImagenetLoader(batch_size, load_batches, image_shape,
+  data = data_loader.ImagenetLoader(batch_size, load_batches,
                                     alexnet_cache_dir, alexnet_dataset_files,
                                     synset_location, synset_list)
-  if not os.path.exists(alexnet_synsets_file):
-    logger.critical("Synset file '%s' not found!" % (alexnet_synsets_file))
-    sys.exit(1)
-  logger.info("Loading synsets file...")
-  data.load(alexnet_synsets_file)
+  if os.path.exists(alexnet_synsets_file):
+    logger.info("Loading synsets file...")
+    data.load(alexnet_synsets_file)
 
   train = data.get_train_set()
   test = data.get_test_set()
@@ -218,11 +216,11 @@ def pretrain():
   conv3 = layers.ConvLayer(kernel_width=3, kernel_height=3, feature_maps=512,
                            border_mode="half")
 
-  pool = layers.Pool(kernel_width=2, kernel_height=2)
+  pool = layers.PoolLayer(kernel_width=2, kernel_height=2)
   norm = layers.NormalizationLayer(depth_radius=5, alpha=1e-4, beta=0.75,
                                    bias=2.0)
 
-  flatten = layers.InnerProductLayer(size=6 * 6 * 512, dropout=True,
+  flatten = layers.InnerProductLayer(size=7 * 7 * 512, dropout=True,
                                      start_bias=1, weight_init="gaussian",
                                      weight_stddev=0.005)
   full1 = layers.InnerProductLayer(size=4096, dropout=True, start_bias=1,
@@ -277,12 +275,12 @@ def pretrain():
 
       # Test it using the training data as well, which we will use to quantify
       # overfitting.
-      label_index = train_batch_index * batch_size
-      top_one, top_five = \
-          network.test_with_training_data(train_batch_index,
-              train_cpu_labels[label_index:label_index + batch_size])
-      logger.info("(Accuracy on training data: top 1: %f, top 5: %f)" % \
-                  (top_one, top_five))
+      #label_index = train_batch_index * batch_size
+      #top_one, top_five = \
+      #    network.test_with_training_data(train_batch_index,
+      #        train_cpu_labels[label_index:label_index + batch_size])
+      #logger.info("(Accuracy on training data: top 1: %f, top 5: %f)" % \
+      #            (top_one, top_five))
 
       test_batch_index += 1
 

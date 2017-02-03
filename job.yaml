@@ -21,4 +21,4 @@ ResourceUsage:
   # Expected GPU usage, in percent.
   - GpuUsage: 50
   # Expected VRAM usage, in bytes.
-  - VramUsage: 10000000000
+  - VramUsage: 11000000000
