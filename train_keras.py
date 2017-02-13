@@ -91,14 +91,12 @@ synset_list = "/job_files/ilsvrc_synsets.txt"
 def pretrain():
   """ Pretrains the network on the ILSVRC dataset. """
 
-  data = data_loader.ImagenetLoader(batch_size, load_batches, image_shape,
+  data = data_loader.ImagenetLoader(batch_size, load_batches,
                                     alexnet_cache_dir, alexnet_dataset_files,
                                     synset_location, synset_list)
-  if not os.path.exists(alexnet_synsets_file):
-    logger.critical("Synset file '%s' not found!" % (alexnet_synsets_file))
-    sys.exit(1)
-  logger.info("Loading synsets file...")
-  data.load(alexnet_synsets_file)
+  if os.path.exists(alexnet_synsets_file):
+    logger.info("Loading synsets file...")
+    data.load(alexnet_synsets_file)
 
   # Make the network.
   logger.info("Building network.")
@@ -107,54 +105,65 @@ def pretrain():
   input_shape = (patch_shape[0], patch_shape[1], 3)
   inputs = layers.Input(shape=input_shape)
 
-  # Layers that get reused.
-  pool = layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2))
-  norm = layers.BatchNormalization()
-  conv3 = layers.Convolution2D(512, 3, 3, activation="relu")
-
-  # Unique layers.
-  inputs = layers.Convolution2D(96, 7, 7, activation="relu",
+  values = layers.Convolution2D(96, 7, 7, activation="relu", border_mode="same",
                                 subsample=(2, 2))(inputs)
-  inputs = norm(inputs)
-  inputs = pool(inputs)
-  inputs = layers.Convolution2D(256, 5, 5, activation="relu",
-                                subsample=(2, 2))(inputs)
-  inputs = norm(inputs)
-  inputs = pool(inputs)
-  inputs = conv3(inputs)
-  inputs = conv3(inputs)
-  inputs = conv3(inputs)
-  inputs = pool(inputs)
+  values = layers.BatchNormalization()(values)
+  values = layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2),
+                               border_mode="same")(values)
+  values = layers.Convolution2D(256, 5, 5, activation="relu",
+                                border_mode="same", subsample=(2, 2))(values)
+  values = layers.BatchNormalization()(values)
+  values = layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2),
+                               border_mode="same")(values)
 
-  inputs = layers.Dense(4096, activation="relu")(inputs)
-  inputs = layers.Dense(2048, activation="relu")(inputs)
+  values = layers.Convolution2D(512, 3, 3, activation="relu",
+                                border_mode="same", subsample=(2, 2))(values)
+  values = layers.Convolution2D(512, 3, 3, activation="relu",
+                                border_mode="same", subsample=(2, 2))(values)
+  values = layers.Convolution2D(512, 3, 3, activation="relu",
+                                border_mode="same", subsample=(2, 2))(values)
 
-  predictions = layers.dense(1000, activation="softmax")(inputs)
+  values = layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2),
+                               border_mode="same")(values)
+
+  values = layers.Flatten()(values)
+
+  values = layers.Dense(4096, activation="relu")(values)
+  values = layers.Dropout(0.5)(values)
+  values = layers.Dense(2048, activation="relu")(values)
+  values = layers.Dropout(0.5)(values)
+
+  predictions = layers.Dense(1000, activation="softmax")(values)
 
   model = Model(input=inputs, output=predictions)
   optimizer = optimizers.SGD(lr=learning_rate, momentum=momentum,
                              decay=decay)
-  model.compile(optimizer, "categorical_crossentropy", metrics=["accuracy"])
+  model.compile(optimizer, "sparse_categorical_crossentropy", metrics=["accuracy"])
 
   # Run the training loop.
   logger.info("Starting training...")
 
   for i in range(0, iterations):
     # Get a new chunk of training data.
-    training_data, training_labels = data.get_training_batch()
+    training_data, training_labels = data.get_train_set()
     # Train the model.
-    model.fit(training_data, training_labels, nb_epochs=load_batches,
+    model.fit(training_data, training_labels, nb_epoch=1,
               batch_size=batch_size)
 
-    if i % 1000:
+    if not i % 1000:
       # Evaluate the model on testing data.
-      testing_data, testing_labels = data.get_testing_batch()
+      testing_data, testing_labels = data.get_test_set()
 
       # We want to average accross all ten patches.
-      average_accuracy = 0.0
-      for i2 in range(0, 10):
-        loss, accuracy = model.evaluate(testing_data, testing_labels,
-                                        batch_size=batch_size)
-        average_accuracy += accuracy
-      average_accuracy /= 10
-      logger.info("Average testing accuracy: %d" % (average_accuracy))
+      loss, accuracy = model.evaluate(testing_data, testing_labels,
+                                      batch_size=batch_size)
+      print accuracy
+      logger.info("Testing accuracy: %d" % (accuracy))
+
+
+def main():
+  pretrain()
+
+
+if __name__ == "__main__":
+  main()

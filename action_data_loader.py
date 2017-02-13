@@ -1,8 +1,7 @@
 import logging
 import threading
 
-from rpinets.common.data_manager import utils
-from rpinets.theano import data_loader
+from rpinets.myelin import data_loader, utils
 
 
 logger = logging.getLogger(__name__)
